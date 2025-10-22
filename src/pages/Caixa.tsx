@@ -11,6 +11,8 @@ import {
   LineChart,
   Line,
   Cell,
+  Area,
+  AreaChart,
 } from "recharts";
 
 // Mock data
@@ -51,6 +53,31 @@ const cicloFinanceiroData = [
   { etapa: "Ciclo Líq.", dias: -2, fill: "hsl(var(--primary))" },
 ];
 
+const capitalGiroData = [
+  { mes: "Ago", necessario: 150, disponivel: 165 },
+  { mes: "Set", necessario: 155, disponivel: 170 },
+  { mes: "Out", necessario: 160, disponivel: 172 },
+  { mes: "Nov", necessario: 165, disponivel: 175 },
+  { mes: "Dez", necessario: 170, disponivel: 178 },
+  { mes: "Jan", necessario: 175, disponivel: 180 },
+];
+
+const agingRecebiveis = [
+  { faixa: "0-30d", valor: 120, fill: "hsl(var(--success))" },
+  { faixa: "31-60d", valor: 45, fill: "hsl(var(--warning))" },
+  { faixa: "61-90d", valor: 18, fill: "hsl(var(--danger-light))" },
+  { faixa: ">90d", valor: 12, fill: "hsl(var(--danger))" },
+];
+
+const pddData = [
+  { mes: "Ago", provisao: 2.8, limite_inf: 2.0, limite_sup: 4.0 },
+  { mes: "Set", provisao: 3.0, limite_inf: 2.0, limite_sup: 4.0 },
+  { mes: "Out", provisao: 2.9, limite_inf: 2.0, limite_sup: 4.0 },
+  { mes: "Nov", provisao: 3.1, limite_inf: 2.0, limite_sup: 4.0 },
+  { mes: "Dez", provisao: 3.3, limite_inf: 2.0, limite_sup: 4.0 },
+  { mes: "Jan", provisao: 3.2, limite_inf: 2.0, limite_sup: 4.0 },
+];
+
 const Caixa = () => {
   return (
     <div className="space-y-6">
@@ -63,7 +90,7 @@ const Caixa = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
         <Card className="shadow-card border-primary/20 bg-info-light/5">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -74,7 +101,7 @@ const Caixa = () => {
             <div className="text-2xl font-bold text-primary">R$ 297k</div>
             <div className="flex items-center gap-1 text-xs text-success mt-1">
               <TrendingUp className="h-3 w-3" />
-              <span>+9.1% vs mês anterior</span>
+              <span>+9.1% vs mês</span>
             </div>
           </CardContent>
         </Card>
@@ -99,7 +126,7 @@ const Caixa = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-danger">R$ 28k</div>
-            <p className="text-xs text-muted-foreground mt-1">Queima mensal líq.</p>
+            <p className="text-xs text-muted-foreground mt-1">Queima mensal</p>
           </CardContent>
         </Card>
 
@@ -112,6 +139,30 @@ const Caixa = () => {
           <CardContent>
             <div className="text-2xl font-bold text-warning">-2 dias</div>
             <p className="text-xs text-muted-foreground mt-1">Ciclo operacional</p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-card border-info/20 bg-info-light/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Capital de Giro
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-info">R$ 180k</div>
+            <p className="text-xs text-muted-foreground mt-1">Disponível</p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-card border-danger/20 bg-danger-light/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Inadimplência
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-danger">3.2%</div>
+            <p className="text-xs text-muted-foreground mt-1">Taxa atual</p>
           </CardContent>
         </Card>
       </div>
@@ -244,6 +295,128 @@ const Caixa = () => {
               />
             </LineChart>
           </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Capital de Giro + Inadimplência */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle>Capital de Giro</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={capitalGiroData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="mes" stroke="hsl(var(--muted-foreground))" />
+                <YAxis stroke="hsl(var(--muted-foreground))" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                  }}
+                />
+                <Bar dataKey="necessario" fill="hsl(var(--warning))" name="Necessário" />
+                <Bar dataKey="disponivel" fill="hsl(var(--success))" name="Disponível" />
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="mt-4 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Gap Médio:</span>
+                <span className="font-semibold text-success">+R$ 8k (Saudável)</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle>Aging de Recebíveis</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={agingRecebiveis}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="faixa" stroke="hsl(var(--muted-foreground))" />
+                <YAxis stroke="hsl(var(--muted-foreground))" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                  }}
+                />
+                <Bar dataKey="valor">
+                  {agingRecebiveis.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="mt-4 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Total a Receber:</span>
+                <span className="font-semibold">R$ 195k</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Vencidos (&gt;30d):</span>
+                <span className="font-semibold text-danger">R$ 75k (38%)</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* PDD - Provisão para Devedores Duvidosos */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle>PDD - Provisão para Devedores Duvidosos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={pddData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="mes" stroke="hsl(var(--muted-foreground))" />
+              <YAxis stroke="hsl(var(--muted-foreground))" domain={[0, 5]} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "hsl(var(--card))",
+                  border: "1px solid hsl(var(--border))",
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="limite_sup"
+                stroke="hsl(var(--danger-light))"
+                strokeWidth={1}
+                strokeDasharray="3 3"
+                dot={false}
+                name="Limite Superior"
+              />
+              <Line
+                type="monotone"
+                dataKey="limite_inf"
+                stroke="hsl(var(--success-light))"
+                strokeWidth={1}
+                strokeDasharray="3 3"
+                dot={false}
+                name="Limite Inferior"
+              />
+              <Line
+                type="monotone"
+                dataKey="provisao"
+                stroke="hsl(var(--primary))"
+                strokeWidth={3}
+                dot={{ fill: "hsl(var(--primary))", r: 5 }}
+                name="Provisão %"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+          <div className="mt-4 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Provisão Atual (Jan):</span>
+              <span className="font-semibold">3.2% (Dentro da meta)</span>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
