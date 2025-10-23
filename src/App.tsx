@@ -9,6 +9,7 @@ import Filiais from "./pages/Filiais";
 import Despesas from "./pages/Despesas";
 import Caixa from "./pages/Caixa";
 import Operacional from "./pages/Operacional";
+import Estrategico from "./pages/Estrategico";
 import Ingest from "./pages/Ingest";
 import AI from "./pages/AI";
 import NotFound from "./pages/NotFound";
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/despesas" element={<Despesas />} />
             <Route path="/caixa" element={<Caixa />} />
             <Route path="/operacional" element={<Operacional />} />
+            <Route path="/estrategico" element={<Estrategico />} />
             <Route path="/ingest" element={<Ingest />} />
             <Route path="/ai" element={<AI />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

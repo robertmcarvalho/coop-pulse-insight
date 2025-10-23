@@ -3,7 +3,8 @@ import {
   Building2, 
   TrendingDown, 
   Wallet, 
-  BarChart3, 
+  BarChart3,
+  Target,
   Upload,
   MessageSquare
 } from "lucide-react";
@@ -50,6 +51,12 @@ const menuItems = [
     url: "/operacional", 
     icon: BarChart3,
     description: "KPIs operacionais"
+  },
+  { 
+    title: "Indicadores Estratégicos", 
+    url: "/estrategico", 
+    icon: Target,
+    description: "Valuation e projeções"
   },
 ];
 
