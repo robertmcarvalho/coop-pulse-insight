@@ -6,31 +6,39 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Schema de validação para cada linha do CSV
+// Schema de validação para cada linha do CSV - mais flexível
 const transacaoSchema = z.object({
   data_movimento: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/),
-  data_vencimento: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/).optional(),
-  data_emissao: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/).optional(),
-  data_pagamento: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/).optional(),
   tipo_movimento: z.enum(['entrada', 'saida']),
+  valor_original: z.string().transform(val => {
+    if (!val || val.trim() === '') return 0
+    return parseFloat(val.replace(/\./g, '').replace(',', '.'))
+  }),
+  data_vencimento: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/).optional().or(z.literal('')),
+  data_emissao: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/).optional().or(z.literal('')),
+  data_pagamento: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/).optional().or(z.literal('')),
   forma_pagamento: z.enum(['dinheiro', 'pix', 'cartao_credito', 'cartao_debito', 'boleto', 'ted', 'transferencia', 'cheque', 'outros']).optional(),
-  valor_original: z.string().transform(val => parseFloat(val.replace(',', '.'))),
-  valor_pago_recebido: z.string().optional().transform(val => val ? parseFloat(val.replace(',', '.')) : null),
-  valor_movimentado_conta: z.string().optional().transform(val => val ? parseFloat(val.replace(',', '.')) : null),
-  valor_rateado_prestador: z.string().optional().transform(val => val ? parseFloat(val.replace(',', '.')) : null),
-  valor_diferenca: z.string().optional().transform(val => val ? parseFloat(val.replace(',', '.')) : null),
+  valor_pago_recebido: z.string().optional().transform(val => {
+    if (!val || val.trim() === '') return null
+    return parseFloat(val.replace(/\./g, '').replace(',', '.'))
+  }),
+  valor_movimentado_conta: z.string().optional().transform(val => {
+    if (!val || val.trim() === '') return null
+    return parseFloat(val.replace(/\./g, '').replace(',', '.'))
+  }),
+  valor_rateado_prestador: z.string().optional().transform(val => {
+    if (!val || val.trim() === '') return null
+    return parseFloat(val.replace(/\./g, '').replace(',', '.'))
+  }),
   quem_gerou: z.string().optional(),
   parceiro: z.string().optional(),
   centro_custo: z.string().optional(),
   conta_contabil: z.string().optional(),
-  categoria: z.enum(['receita', 'custo_variavel', 'despesa_fixa', 'despesa_variavel', 'investimento', 'financeiro']).optional(),
-  tipo_receita_despesa: z.enum(['operacional', 'nao_operacional', 'financeira']).optional(),
-  banco_tipo: z.enum(['conta_corrente', 'caixa', 'poupanca', 'aplicacao']).optional(),
   banco_nome: z.string().optional(),
   referente: z.string().optional(),
   subcategoria: z.string().optional(),
   tags: z.string().optional(),
-})
+}).passthrough() // Permite campos extras que não estão no schema
 
 function parseCSV(csvText: string): string[][] {
   const lines = csvText.split('\n').filter(line => line.trim())
@@ -116,41 +124,37 @@ Deno.serve(async (req) => {
     // Mapeamento de headers do CSV (português) para campos do schema
     const headerMapping: Record<string, string> = {
       'data movimento': 'data_movimento',
-      'data mov.': 'data_movimento',
+      'entrada/saída': 'tipo_movimento',
+      'entrada/saida': 'tipo_movimento',
+      'tipo título': 'forma_pagamento',
+      'tipo titulo': 'forma_pagamento',
+      'número docto': 'numero_docto',
+      'numero docto': 'numero_docto',
+      'quem gerou': 'quem_gerou',
+      'parceirov (farmácia pagador ou entregador)': 'parceiro',
+      'parceirov': 'parceiro',
+      'parceiro': 'parceiro',
+      'referente': 'referente',
       'vencimento': 'data_vencimento',
       'emissão': 'data_emissao',
       'emissao': 'data_emissao',
       'pagamento': 'data_pagamento',
-      'entrada/saída': 'tipo_movimento',
-      'entrada/saida': 'tipo_movimento',
-      'tipo': 'forma_pagamento',
-      'forma pagamento': 'forma_pagamento',
       'valor original': 'valor_original',
-      'valor pago/recebido': 'valor_pago_recebido',
+      'valor pago / recebido': 'valor_pago_recebido',
       'valor pago recebido': 'valor_pago_recebido',
-      'valor mov.conta': 'valor_movimentado_conta',
-      'valor movimentado conta': 'valor_movimentado_conta',
-      'valor rateado prestador': 'valor_rateado_prestador',
-      'valor diferença': 'valor_diferenca',
-      'valor diferenca': 'valor_diferenca',
-      'quem gerou': 'quem_gerou',
-      'parceiro v': 'parceiro',
-      'parceiro': 'parceiro',
-      'centro de custo': 'centro_custo',
-      'centro custo': 'centro_custo',
-      'conta': 'conta_contabil',
-      'conta contabil': 'conta_contabil',
-      'conta contábil': 'conta_contabil',
+      'valor pago/recebido': 'valor_pago_recebido',
+      'conta': 'conta_bancaria',
       'plano de contas': 'conta_contabil',
+      'valor mov.conta': 'valor_movimentado_conta',
+      'valor rateado para o prestador': 'valor_rateado_prestador',
+      'centro de custo (farmácia prestadora)': 'centro_custo',
+      'centro de custo': 'centro_custo',
+      'banco / caixa': 'banco_nome',
+      'banco/caixa': 'banco_nome',
+      'banco caixa': 'banco_nome',
+      'registro movimento': 'registro_movimento',
+      'registro compromisso': 'registro_compromisso',
       'categoria': 'categoria',
-      'tipo receita/despesa': 'tipo_receita_despesa',
-      'tipo receita despesa': 'tipo_receita_despesa',
-      'banco/caixa': 'banco_tipo',
-      'banco caixa': 'banco_tipo',
-      'banco tipo': 'banco_tipo',
-      'banco': 'banco_nome',
-      'banco nome': 'banco_nome',
-      'referente': 'referente',
       'subcategoria': 'subcategoria',
       'tags': 'tags',
     }
@@ -182,9 +186,29 @@ Deno.serve(async (req) => {
 
       // Mapear tipo_movimento se vier como "Entrada" ou "Saída"
       if (rowData.tipo_movimento) {
-        const tipo = rowData.tipo_movimento.toLowerCase()
-        if (tipo.includes('entrada')) rowData.tipo_movimento = 'entrada'
-        else if (tipo.includes('saída') || tipo.includes('saida')) rowData.tipo_movimento = 'saida'
+        const tipo = rowData.tipo_movimento.toUpperCase()
+        if (tipo === 'ENTRADA') rowData.tipo_movimento = 'entrada'
+        else if (tipo === 'SAÍDA' || tipo === 'SAIDA') rowData.tipo_movimento = 'saida'
+      }
+
+      // Mapear forma_pagamento (o campo "TIPO TÍTULO" no Excel)
+      if (rowData.forma_pagamento) {
+        const forma = rowData.forma_pagamento.toLowerCase()
+        const formaMap: Record<string, string> = {
+          'dinheiro': 'dinheiro',
+          'pix': 'pix',
+          'boleto': 'boleto',
+          'nfse': 'outros',
+          'cartão de crédito': 'cartao_credito',
+          'cartao de credito': 'cartao_credito',
+          'cartão de débito': 'cartao_debito',
+          'cartao de debito': 'cartao_debito',
+          'ted': 'ted',
+          'transferência': 'transferencia',
+          'transferencia': 'transferencia',
+          'cheque': 'cheque',
+        }
+        rowData.forma_pagamento = formaMap[forma] || 'outros'
       }
 
       try {
@@ -192,22 +216,21 @@ Deno.serve(async (req) => {
         
         transacoes.push({
           data_movimento: convertDate(validated.data_movimento),
-          data_vencimento: validated.data_vencimento ? convertDate(validated.data_vencimento) : null,
-          data_emissao: validated.data_emissao ? convertDate(validated.data_emissao) : null,
-          data_pagamento: validated.data_pagamento ? convertDate(validated.data_pagamento) : null,
+          data_vencimento: validated.data_vencimento && validated.data_vencimento !== '' ? convertDate(validated.data_vencimento) : null,
+          data_emissao: validated.data_emissao && validated.data_emissao !== '' ? convertDate(validated.data_emissao) : null,
+          data_pagamento: validated.data_pagamento && validated.data_pagamento !== '' ? convertDate(validated.data_pagamento) : null,
           tipo_movimento: validated.tipo_movimento,
-          forma_pagamento: validated.forma_pagamento,
+          forma_pagamento: validated.forma_pagamento || null,
           valor_original: validated.valor_original,
           valor_pago_recebido: validated.valor_pago_recebido,
           valor_movimentado_conta: validated.valor_movimentado_conta,
           valor_rateado_prestador: validated.valor_rateado_prestador,
-          valor_diferenca: validated.valor_diferenca,
-          categoria: validated.categoria,
-          tipo_receita_despesa: validated.tipo_receita_despesa,
-          banco_tipo: validated.banco_tipo,
-          banco_nome: validated.banco_nome,
-          referente: validated.referente,
-          subcategoria: validated.subcategoria,
+          categoria: null, // Não mapeamos categoria do Excel ainda
+          tipo_receita_despesa: null,
+          banco_tipo: null,
+          banco_nome: validated.banco_nome || null,
+          referente: validated.referente || null,
+          subcategoria: validated.subcategoria || null,
           tags: validated.tags ? validated.tags.split(',').map(t => t.trim()) : null,
         })
       } catch (error) {
