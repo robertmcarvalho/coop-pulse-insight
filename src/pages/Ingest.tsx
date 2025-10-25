@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Upload, FileSpreadsheet, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { supabase } from "@/integrations/supabase/client";
 
 const Ingest = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -39,26 +40,50 @@ const Ingest = () => {
     setUploading(true);
     
     try {
-      // Simulando upload - será substituído por chamada real à API
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const { data: { session } } = await supabase.auth.getSession();
       
-      setUploadResult({
-        success: true,
-        message: "Arquivo processado com sucesso!",
-        stats: {
-          total: 450,
-          processed: 445,
-          errors: 5,
+      if (!session) {
+        throw new Error('Usuário não autenticado');
+      }
+
+      const response = await supabase.functions.invoke('process-csv', {
+        body: formData,
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
         },
       });
+
+      if (response.error) {
+        throw response.error;
+      }
+
+      const result = response.data;
       
-      toast.success("Dados importados com sucesso!");
+      if (result.success) {
+        setUploadResult({
+          success: true,
+          message: result.message,
+          stats: {
+            total: result.imported + result.errors,
+            processed: result.imported,
+            errors: result.errors,
+          },
+        });
+        
+        toast.success("Dados importados com sucesso!");
+      } else {
+        throw new Error(result.error);
+      }
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Erro ao processar o arquivo';
       setUploadResult({
         success: false,
-        message: "Erro ao processar o arquivo",
+        message: errorMsg,
       });
-      toast.error("Falha no upload");
+      toast.error(errorMsg);
     } finally {
       setUploading(false);
     }
