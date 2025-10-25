@@ -113,10 +113,52 @@ Deno.serve(async (req) => {
       throw new Error('CSV vazio ou inválido')
     }
 
-    const headers = rows[0].map(h => h.toLowerCase().trim())
+    // Mapeamento de headers do CSV (português) para campos do schema
+    const headerMapping: Record<string, string> = {
+      'data movimento': 'data_movimento',
+      'data mov.': 'data_movimento',
+      'vencimento': 'data_vencimento',
+      'emissão': 'data_emissao',
+      'emissao': 'data_emissao',
+      'pagamento': 'data_pagamento',
+      'entrada/saída': 'tipo_movimento',
+      'entrada/saida': 'tipo_movimento',
+      'tipo': 'forma_pagamento',
+      'forma pagamento': 'forma_pagamento',
+      'valor original': 'valor_original',
+      'valor pago/recebido': 'valor_pago_recebido',
+      'valor pago recebido': 'valor_pago_recebido',
+      'valor mov.conta': 'valor_movimentado_conta',
+      'valor movimentado conta': 'valor_movimentado_conta',
+      'valor rateado prestador': 'valor_rateado_prestador',
+      'valor diferença': 'valor_diferenca',
+      'valor diferenca': 'valor_diferenca',
+      'quem gerou': 'quem_gerou',
+      'parceiro v': 'parceiro',
+      'parceiro': 'parceiro',
+      'centro de custo': 'centro_custo',
+      'centro custo': 'centro_custo',
+      'conta': 'conta_contabil',
+      'conta contabil': 'conta_contabil',
+      'conta contábil': 'conta_contabil',
+      'plano de contas': 'conta_contabil',
+      'categoria': 'categoria',
+      'tipo receita/despesa': 'tipo_receita_despesa',
+      'tipo receita despesa': 'tipo_receita_despesa',
+      'banco/caixa': 'banco_tipo',
+      'banco caixa': 'banco_tipo',
+      'banco tipo': 'banco_tipo',
+      'banco': 'banco_nome',
+      'banco nome': 'banco_nome',
+      'referente': 'referente',
+      'subcategoria': 'subcategoria',
+      'tags': 'tags',
+    }
+
+    const rawHeaders = rows[0].map(h => h.toLowerCase().trim())
     const dataRows = rows.slice(1)
 
-    console.log('CSV Headers:', headers)
+    console.log('CSV Raw Headers:', rawHeaders)
     console.log('Total rows to process:', dataRows.length)
 
     const transacoes = []
@@ -124,12 +166,26 @@ Deno.serve(async (req) => {
 
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i]
-      if (row.length < headers.length) continue
+      
+      // Skip empty rows
+      if (row.every(cell => !cell || cell.trim() === '')) continue
+      if (row.length < rawHeaders.length) continue
 
       const rowData: any = {}
-      headers.forEach((header, idx) => {
-        rowData[header] = row[idx]
+      rawHeaders.forEach((rawHeader, idx) => {
+        const mappedHeader = headerMapping[rawHeader] || rawHeader.replace(/\s+/g, '_')
+        const value = row[idx]?.trim()
+        if (value) {
+          rowData[mappedHeader] = value
+        }
       })
+
+      // Mapear tipo_movimento se vier como "Entrada" ou "Saída"
+      if (rowData.tipo_movimento) {
+        const tipo = rowData.tipo_movimento.toLowerCase()
+        if (tipo.includes('entrada')) rowData.tipo_movimento = 'entrada'
+        else if (tipo.includes('saída') || tipo.includes('saida')) rowData.tipo_movimento = 'saida'
+      }
 
       try {
         const validated = transacaoSchema.parse(rowData)

@@ -190,31 +190,27 @@ const Ingest = () => {
         <CardContent>
           <div className="prose prose-sm max-w-none">
             <p className="text-muted-foreground mb-4">
-              O arquivo CSV deve conter as seguintes colunas (na ordem):
+              O arquivo CSV deve conter as seguintes colunas (aceita variações com/sem acentos):
             </p>
-            <ol className="text-sm space-y-2 text-foreground">
-              <li>DATA MOVIMENTO</li>
-              <li>ENTRADA/SAÍDA</li>
-              <li>TIPO (forma de pagamento)</li>
-              <li>TÍTULO</li>
-              <li>NÚMERO DOCTO</li>
-              <li>QUEM GEROU</li>
-              <li>PARCEIRO V</li>
-              <li>REFERENTE</li>
-              <li>VENCIMENTO</li>
-              <li>EMISSÃO</li>
-              <li>PAGAMENTO</li>
-              <li>VALOR ORIGINAL</li>
-              <li>VALOR PAGO/RECEBIDO</li>
-              <li>CONTA</li>
-              <li>PLANO DE CONTAS</li>
-              <li>VALOR MOV.CONTA</li>
-              <li>VALOR RATEADO PRESTADOR</li>
-              <li>CENTRO DE CUSTO</li>
-              <li>BANCO/CAIXA</li>
-              <li>REGISTRO MOVIMENTO</li>
-              <li>REGISTRO COMPROMISSO</li>
-            </ol>
+            <div className="text-sm space-y-2 text-foreground">
+              <p className="font-semibold">Colunas obrigatórias:</p>
+              <ul className="list-disc list-inside ml-4 space-y-1">
+                <li>DATA MOVIMENTO (formato: DD/MM/AAAA)</li>
+                <li>ENTRADA/SAÍDA (valores: "Entrada" ou "Saída")</li>
+                <li>VALOR ORIGINAL (formato: 1234,56)</li>
+              </ul>
+              
+              <p className="font-semibold mt-4">Colunas opcionais:</p>
+              <ul className="list-disc list-inside ml-4 space-y-1">
+                <li>VENCIMENTO, EMISSÃO, PAGAMENTO (formato: DD/MM/AAAA)</li>
+                <li>TIPO (forma de pagamento: dinheiro, pix, cartao_credito, etc.)</li>
+                <li>VALOR PAGO/RECEBIDO, VALOR MOV.CONTA (formato: 1234,56)</li>
+                <li>QUEM GEROU, PARCEIRO, REFERENTE</li>
+                <li>CENTRO DE CUSTO, CONTA/PLANO DE CONTAS</li>
+                <li>CATEGORIA, SUBCATEGORIA, TAGS</li>
+                <li>BANCO/CAIXA, BANCO (nome)</li>
+              </ul>
+            </div>
           </div>
         </CardContent>
       </Card>
