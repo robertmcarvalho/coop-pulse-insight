@@ -42,6 +42,13 @@ const transacaoSchema = z.object({
 
 function parseCSV(csvText: string): string[][] {
   const lines = csvText.split('\n').filter(line => line.trim())
+  
+  // Detect delimiter (semicolon or comma)
+  const firstLine = lines[0] || ''
+  const delimiter = firstLine.includes(';') ? ';' : ','
+  
+  console.log('Detected CSV delimiter:', delimiter)
+  
   return lines.map(line => {
     const values: string[] = []
     let current = ''
@@ -51,7 +58,7 @@ function parseCSV(csvText: string): string[][] {
       const char = line[i]
       if (char === '"') {
         inQuotes = !inQuotes
-      } else if (char === ',' && !inQuotes) {
+      } else if (char === delimiter && !inQuotes) {
         values.push(current.trim())
         current = ''
       } else {
