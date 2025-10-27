@@ -171,9 +171,17 @@ Deno.serve(async (req) => {
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i]
       
-      // Skip empty rows
-      if (row.every(cell => !cell || cell.trim() === '')) continue
-      if (row.length < rawHeaders.length) continue
+      // Skip empty rows or rows with insufficient columns
+      if (row.every(cell => !cell || cell.trim() === '')) {
+        console.log(`Skipping empty row ${i + 2}`)
+        continue
+      }
+      
+      // Skip rows that don't have the minimum required columns
+      if (row.length < 3) {
+        console.log(`Skipping row ${i + 2}: insufficient columns (${row.length})`)
+        continue
+      }
 
       const rowData: any = {}
       rawHeaders.forEach((rawHeader, idx) => {
@@ -183,6 +191,11 @@ Deno.serve(async (req) => {
           rowData[mappedHeader] = value
         }
       })
+      
+      // Log first few rows for debugging
+      if (i < 3) {
+        console.log(`Row ${i + 2} mapped data:`, JSON.stringify(rowData))
+      }
 
       // Mapear tipo_movimento se vier como "Entrada" ou "Saída"
       if (rowData.tipo_movimento) {
@@ -237,6 +250,9 @@ Deno.serve(async (req) => {
         const errorMsg = error instanceof Error ? error.message : 'Unknown error'
         errors.push({ row: i + 2, error: errorMsg })
         console.error(`Error parsing row ${i + 2}:`, errorMsg)
+        if (i < 5) {
+          console.error(`Row ${i + 2} data before validation:`, JSON.stringify(rowData))
+        }
       }
     }
 
