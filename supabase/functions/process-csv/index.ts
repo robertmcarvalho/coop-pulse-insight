@@ -48,8 +48,9 @@ function parseCSV(csvText: string): string[][] {
   const delimiter = firstLine.includes(';') ? ';' : ','
   
   console.log('Detected CSV delimiter:', delimiter)
+  console.log('First line sample:', firstLine.substring(0, 200))
   
-  return lines.map(line => {
+  const result = lines.map(line => {
     const values: string[] = []
     let current = ''
     let inQuotes = false
@@ -68,6 +69,11 @@ function parseCSV(csvText: string): string[][] {
     values.push(current.trim())
     return values
   })
+  
+  console.log('Parsed header columns:', result[0].length)
+  console.log('First 5 header columns:', result[0].slice(0, 5))
+  
+  return result
 }
 
 function convertDate(dateStr: string): string | null {
