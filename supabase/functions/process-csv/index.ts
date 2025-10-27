@@ -178,122 +178,126 @@ Deno.serve(async (req) => {
     console.log('CSV Raw Headers:', rawHeaders)
     console.log('Total rows to process:', dataRows.length)
 
-    const transacoes = []
-    const errors = []
+    const BATCH_SIZE = 100
+    const MAX_ERRORS = 50
+    const errors: Array<{ row: number; error: string }> = []
+    let totalInserted = 0
 
-    for (let i = 0; i < dataRows.length; i++) {
-      const row = dataRows[i]
+    // Process in batches to avoid memory issues
+    for (let batchStart = 0; batchStart < dataRows.length; batchStart += BATCH_SIZE) {
+      const batchEnd = Math.min(batchStart + BATCH_SIZE, dataRows.length)
+      const transacoes = []
       
-      // Skip empty rows or rows with insufficient columns
-      if (row.every(cell => !cell || cell.trim() === '')) {
-        console.log(`Skipping empty row ${i + 2}`)
-        continue
-      }
-      
-      // Skip rows that don't have the minimum required columns
-      if (row.length < 3) {
-        console.log(`Skipping row ${i + 2}: insufficient columns (${row.length})`)
-        continue
-      }
+      console.log(`Processing batch: rows ${batchStart + 2} to ${batchEnd + 1}`)
 
-      const rowData: any = {}
-      rawHeaders.forEach((rawHeader, idx) => {
-        const mappedHeader = headerMapping[rawHeader] || rawHeader.replace(/\s+/g, '_')
-        const value = row[idx]?.trim()
-        if (value) {
-          rowData[mappedHeader] = value
-        }
-      })
-      
-      // Log first few rows for debugging
-      if (i < 3) {
-        console.log(`Row ${i + 2} mapped data:`, JSON.stringify(rowData))
-      }
-
-      // Mapear tipo_movimento se vier como "Entrada" ou "Saída"
-      if (rowData.tipo_movimento) {
-        const tipo = rowData.tipo_movimento.toUpperCase()
-        if (tipo === 'ENTRADA') rowData.tipo_movimento = 'entrada'
-        else if (tipo === 'SAÍDA' || tipo === 'SAIDA') rowData.tipo_movimento = 'saida'
-      }
-
-      // Mapear forma_pagamento (o campo "TIPO TÍTULO" no Excel)
-      if (rowData.forma_pagamento) {
-        const forma = rowData.forma_pagamento.toLowerCase()
-        const formaMap: Record<string, string> = {
-          'dinheiro': 'dinheiro',
-          'pix': 'pix',
-          'boleto': 'boleto',
-          'nfse': 'outros',
-          'cartão de crédito': 'cartao_credito',
-          'cartao de credito': 'cartao_credito',
-          'cartão de débito': 'cartao_debito',
-          'cartao de debito': 'cartao_debito',
-          'ted': 'ted',
-          'transferência': 'transferencia',
-          'transferencia': 'transferencia',
-          'cheque': 'cheque',
-        }
-        rowData.forma_pagamento = formaMap[forma] || 'outros'
-      }
-
-      try {
-        const validated = transacaoSchema.parse(rowData)
+      for (let i = batchStart; i < batchEnd; i++) {
+        const row = dataRows[i]
         
-        transacoes.push({
-          data_movimento: convertDate(validated.data_movimento),
-          data_vencimento: validated.data_vencimento && validated.data_vencimento !== '' ? convertDate(validated.data_vencimento) : null,
-          data_emissao: validated.data_emissao && validated.data_emissao !== '' ? convertDate(validated.data_emissao) : null,
-          data_pagamento: validated.data_pagamento && validated.data_pagamento !== '' ? convertDate(validated.data_pagamento) : null,
-          tipo_movimento: validated.tipo_movimento,
-          forma_pagamento: validated.forma_pagamento || null,
-          valor_original: validated.valor_original,
-          valor_pago_recebido: validated.valor_pago_recebido,
-          valor_movimentado_conta: validated.valor_movimentado_conta,
-          valor_rateado_prestador: validated.valor_rateado_prestador,
-          categoria: null, // Não mapeamos categoria do Excel ainda
-          tipo_receita_despesa: null,
-          banco_tipo: null,
-          banco_nome: validated.banco_nome || null,
-          referente: validated.referente || null,
-          subcategoria: validated.subcategoria || null,
-          tags: validated.tags ? validated.tags.split(',').map(t => t.trim()) : null,
-        })
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error'
-        errors.push({ row: i + 2, error: errorMsg })
-        console.error(`Error parsing row ${i + 2}:`, errorMsg)
-        if (i < 5) {
-          console.error(`Row ${i + 2} data before validation:`, JSON.stringify(rowData))
+        // Skip empty rows or rows with insufficient columns
+        if (row.every(cell => !cell || cell.trim() === '')) {
+          continue
         }
+        
+        // Skip rows that don't have the minimum required columns
+        if (row.length < 3) {
+          continue
+        }
+
+        const rowData: any = {}
+        rawHeaders.forEach((rawHeader, idx) => {
+          const mappedHeader = headerMapping[rawHeader] || rawHeader.replace(/\s+/g, '_')
+          const value = row[idx]?.trim()
+          if (value) {
+            rowData[mappedHeader] = value
+          }
+        })
+
+        // Mapear tipo_movimento se vier como "Entrada" ou "Saída"
+        if (rowData.tipo_movimento) {
+          const tipo = rowData.tipo_movimento.toUpperCase()
+          if (tipo === 'ENTRADA') rowData.tipo_movimento = 'entrada'
+          else if (tipo === 'SAÍDA' || tipo === 'SAIDA') rowData.tipo_movimento = 'saida'
+        }
+
+        // Mapear forma_pagamento (o campo "TIPO TÍTULO" no Excel)
+        if (rowData.forma_pagamento) {
+          const forma = rowData.forma_pagamento.toLowerCase()
+          const formaMap: Record<string, string> = {
+            'dinheiro': 'dinheiro',
+            'pix': 'pix',
+            'boleto': 'boleto',
+            'nfse': 'outros',
+            'cartão de crédito': 'cartao_credito',
+            'cartao de credito': 'cartao_credito',
+            'cartão de débito': 'cartao_debito',
+            'cartao de debito': 'cartao_debito',
+            'ted': 'ted',
+            'transferência': 'transferencia',
+            'transferencia': 'transferencia',
+            'cheque': 'cheque',
+          }
+          rowData.forma_pagamento = formaMap[forma] || 'outros'
+        }
+
+        try {
+          const validated = transacaoSchema.parse(rowData)
+          
+          transacoes.push({
+            data_movimento: convertDate(validated.data_movimento),
+            data_vencimento: validated.data_vencimento && validated.data_vencimento !== '' ? convertDate(validated.data_vencimento) : null,
+            data_emissao: validated.data_emissao && validated.data_emissao !== '' ? convertDate(validated.data_emissao) : null,
+            data_pagamento: validated.data_pagamento && validated.data_pagamento !== '' ? convertDate(validated.data_pagamento) : null,
+            tipo_movimento: validated.tipo_movimento,
+            forma_pagamento: validated.forma_pagamento || null,
+            valor_original: validated.valor_original,
+            valor_pago_recebido: validated.valor_pago_recebido,
+            valor_movimentado_conta: validated.valor_movimentado_conta,
+            valor_rateado_prestador: validated.valor_rateado_prestador,
+            categoria: null,
+            tipo_receita_despesa: null,
+            banco_tipo: null,
+            banco_nome: validated.banco_nome || null,
+            referente: validated.referente || null,
+            subcategoria: validated.subcategoria || null,
+            tags: validated.tags ? validated.tags.split(',').map(t => t.trim()) : null,
+          })
+        } catch (error) {
+          if (errors.length < MAX_ERRORS) {
+            const errorMsg = error instanceof Error ? error.message : 'Unknown error'
+            errors.push({ row: i + 2, error: errorMsg })
+          }
+        }
+      }
+
+      // Insert batch
+      if (transacoes.length > 0) {
+        const { data: inserted, error: insertError } = await supabase
+          .from('transacoes')
+          .insert(transacoes)
+          .select()
+
+        if (insertError) {
+          console.error('Insert error for batch:', insertError)
+          throw new Error(`Erro ao inserir batch: ${insertError.message}`)
+        }
+
+        totalInserted += inserted?.length || 0
+        console.log(`Batch inserted: ${inserted?.length} transactions (Total: ${totalInserted})`)
       }
     }
 
-    console.log('Valid transactions:', transacoes.length)
-    console.log('Errors:', errors.length)
+    console.log('Total inserted:', totalInserted)
+    console.log('Total errors:', errors.length)
 
-    if (transacoes.length === 0) {
+    if (totalInserted === 0) {
       throw new Error('Nenhuma transação válida encontrada no CSV')
     }
-
-    // Inserir transações
-    const { data: inserted, error: insertError } = await supabase
-      .from('transacoes')
-      .insert(transacoes)
-      .select()
-
-    if (insertError) {
-      console.error('Insert error:', insertError)
-      throw new Error(`Erro ao inserir transações: ${insertError.message}`)
-    }
-
-    console.log('Inserted transactions:', inserted?.length)
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: `${inserted?.length || 0} transações importadas com sucesso`,
-        imported: inserted?.length || 0,
+        message: `${totalInserted} transações importadas com sucesso`,
+        imported: totalInserted,
         errors: errors.length,
         errorDetails: errors.slice(0, 10), // Apenas os primeiros 10 erros
       }),
